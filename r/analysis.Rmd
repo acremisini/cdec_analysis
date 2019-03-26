@@ -1,0 +1,85 @@
+---
+title: "analysis"
+author: "Andres Cremisini"
+date: "March 26, 2019"
+output: html_document
+---
+
+Specify data locations
+```{r}
+wdec.path = "../python/data/WDEC.csv"
+cdec.path = "../python/data/CDEC.csv"
+```
+
+Load data
+```{r}
+# read data to csv
+wdec.data = read.csv(file=wdec.path, header=TRUE, sep=",")
+wdec.data = na.omit(wdec.data)
+wdec.data$coreferent = as.factor(wdec.data$coreferent)
+
+# WDEC:
+
+# do 80/20 split
+n = dim(wdec.data)[1]
+train=sample(n,n*0.80)
+test=-train
+wdec.train=wdec.data[train,]
+wdec.test=wdec.data[test,]
+
+# make matrix
+wdec.train.mat=model.matrix(wdec.train$coreferent~.,data=data.frame(wdec.train))[,-1]
+wdec.train.Y=wdec.train$coreferent
+
+
+wdec.test.mat=model.matrix(wdec.test$coreferent~.,data=data.frame(wdec.test))[,-1]
+wdec.test.Y=wdec.test$coreferent
+
+```
+
+Begin analysis
+
+Use Lasso
+```{r}
+# 80/20 split
+library(glmnet)
+library(ROCR)
+
+cv.out=cv.glmnet(wdec.train.mat,wdec.train.Y,alpha=1,family="binomial")
+plot(cv.out)
+bestlam=cv.out$lambda.min
+lasso.fit=glmnet(wdec.train.mat,wdec.train.Y,alpha=1,family="binomial")
+lasso.pred=predict(lasso.fit,s=bestlam,type="coefficients")
+
+print(paste("best lambda:",bestlam))
+lasso.pred=predict(lasso.fit,s=bestlam,newx=wdec.test.mat,type="response")
+preds=rep(0,length(wdec.test.Y))
+preds[lasso.pred>.5]=1
+
+results = table(preds,wdec.test.Y)
+results
+test_acc = sum(diag(results)) / sum(results)
+print(paste("Test set accuracy: ", test_acc))
+
+# use ROCR
+pred <- prediction(preds, wdec.test.Y)
+
+
+# Recall-Precision curve             
+RP.perf = performance(pred, "prec", "rec")
+
+plot(RP.perf)
+
+# ROC curve
+ROC.perf <- performance(pred, "tpr", "fpr")
+plot(ROC.perf)
+
+# ROC area under the curve
+auc.tmp <- performance(pred,"auc")
+auc <- as.numeric(auc.tmp@y.values)
+
+# f1:
+performance(pred,"f")
+
+
+```
