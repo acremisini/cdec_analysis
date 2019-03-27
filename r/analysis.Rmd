@@ -43,7 +43,7 @@ Use Lasso
 ```{r}
 # 80/20 split
 library(glmnet)
-library(ROCR)
+library(MLmetrics)
 
 cv.out=cv.glmnet(wdec.train.mat,wdec.train.Y,alpha=1,family="binomial")
 plot(cv.out)
@@ -57,29 +57,20 @@ preds=rep(0,length(wdec.test.Y))
 preds[lasso.pred>.5]=1
 
 results = table(preds,wdec.test.Y)
-results
-test_acc = sum(diag(results)) / sum(results)
-print(paste("Test set accuracy: ", test_acc))
+print(results)
 
-# use ROCR
-pred <- prediction(preds, wdec.test.Y)
+prec=Precision(y_pred = preds, y_true = wdec.test.Y, positive = "1")
+rec=Recall(y_pred = preds, y_true = wdec.test.Y, positive = "1")
+acc=Accuracy(y_pred = preds, y_true = wdec.test.Y)
+f1=F1_Score(y_pred = preds, y_true = wdec.test.Y, positive = "1")
+
+print(paste("Precision: ",prec))
+print(paste("Recall: ",rec))
+print(paste("Accuracy: ",acc))
+print(paste("F1: ",f1))
 
 
-# Recall-Precision curve             
-RP.perf = performance(pred, "prec", "rec")
 
-plot(RP.perf)
-
-# ROC curve
-ROC.perf <- performance(pred, "tpr", "fpr")
-plot(ROC.perf)
-
-# ROC area under the curve
-auc.tmp <- performance(pred,"auc")
-auc <- as.numeric(auc.tmp@y.values)
-
-# f1:
-performance(pred,"f")
 
 
 ```
