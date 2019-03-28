@@ -13,63 +13,328 @@ cdec.path = "../python/data/CDEC.csv"
 
 Load data
 ```{r}
+set.seed(123)
 # read data to csv
 wdec.data = read.csv(file=wdec.path, header=TRUE, sep=",")
 wdec.data = na.omit(wdec.data)
+
+wdec.data = wdec.data[,c("word2vec.similarity", "sts", "coreferent")]
+
 wdec.data$coreferent = as.factor(wdec.data$coreferent)
+# wdec.data$sts = 0
+wdec.data$interaction = wdec.data$sts*(wdec.data$word2vec.similarity+.01)
+
+levels(wdec.data$coreferent) = c('False', 'True')
 
 # WDEC:
 
-# do 80/20 split
+# do random 80/20 split
 n = dim(wdec.data)[1]
 train=sample(n,n*0.80)
 test=-train
 wdec.train=wdec.data[train,]
 wdec.test=wdec.data[test,]
 
-# make matrix
+# make matrices
+wdec.data.mat=model.matrix(wdec.data$coreferent~.,data=data.frame(wdec.data))[,-1]
+wdec.data.Y=wdec.data$coreferent
+
 wdec.train.mat=model.matrix(wdec.train$coreferent~.,data=data.frame(wdec.train))[,-1]
 wdec.train.Y=wdec.train$coreferent
-
 
 wdec.test.mat=model.matrix(wdec.test$coreferent~.,data=data.frame(wdec.test))[,-1]
 wdec.test.Y=wdec.test$coreferent
 
+
+```
+SVM
+```{r}
+library(caret)
+library(pROC)
+library(DMwR)
+set.seed(123)
+
+smote_train <- SMOTE(coreferent ~ ., data  = wdec.train)                         
+table(smote_train$coreferent) 
+
+fit.svm = train(
+               coreferent ~., # define the model
+               data = smote_train, # data
+               method = "svmRadial",
+               metric = "ROC",
+               tuneLength=10,
+               preProc = c("center", "scale"),
+               trControl = trainControl(method = "repeatedcv", # cross-validation
+                                        number= 10,
+                                        repeats = 5,
+                                        summaryFunction = twoClassSummary,
+                                        classProbs = TRUE
+                                       )
+              )
+
+getTrainPerf(fit.svm)
+
+print(fit.svm)
+
+preds = predict(fit.svm, wdec.test)
+confusionMatrix(preds, wdec.test.Y, positive="True", mode="everything")
+
+fit.svm.roc = roc(wdec.test.Y,
+                 predict(fit.svm,wdec.test, type="prob")[,1],
+                 levels=rev(levels(wdec.test.Y)))
+fit.svm.roc
+
+plot(fit.svm.roc, 
+     print.thres = c(.5), 
+     type = "S",
+     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+     print.thres.cex = .8,
+     legacy.axes=TRUE)
+
+
 ```
 
-Begin analysis
-
-Use Lasso
+Vanilla Random Forest
 ```{r}
-# 80/20 split
-library(glmnet)
-library(MLmetrics)
+library(caret)
+library(pROC)
+library(DMwR)
+set.seed(123)
 
-cv.out=cv.glmnet(wdec.train.mat,wdec.train.Y,alpha=1,family="binomial")
-plot(cv.out)
-bestlam=cv.out$lambda.min
-lasso.fit=glmnet(wdec.train.mat,wdec.train.Y,alpha=1,family="binomial")
-lasso.pred=predict(lasso.fit,s=bestlam,type="coefficients")
+wdec.train.down_sample = downSample(x = wdec.train[, -ncol(wdec.train)],
+                        y = wdec.train$coreferent)
+print(head(wdec.train.down_sample))
 
-print(paste("best lambda:",bestlam))
-lasso.pred=predict(lasso.fit,s=bestlam,newx=wdec.test.mat,type="response")
-preds=rep(0,length(wdec.test.Y))
-preds[lasso.pred>.5]=1
+fit.RF = train(
+               Class ~., # define the model
+               data = wdec.train.down_sample, # data
+               method = "rf",
+               metric = "ROC",
+               tuneGrid = data.frame(mtry = 3),
+               ntree = 100,
+               trControl = trainControl(method = "repeatedcv", # cross-validation,
+                                        number= 10,
+                                        repeats = 5,
+                                        summaryFunction = twoClassSummary,
+                                        classProbs = TRUE
+                                       )
+              )
 
-results = table(preds,wdec.test.Y)
-print(results)
+fit.RF
 
-prec=Precision(y_pred = preds, y_true = wdec.test.Y, positive = "1")
-rec=Recall(y_pred = preds, y_true = wdec.test.Y, positive = "1")
-acc=Accuracy(y_pred = preds, y_true = wdec.test.Y)
-f1=F1_Score(y_pred = preds, y_true = wdec.test.Y, positive = "1")
+getTrainPerf(fit.RF)
 
-print(paste("Precision: ",prec))
-print(paste("Recall: ",rec))
-print(paste("Accuracy: ",acc))
-print(paste("F1: ",f1))
+preds = predict(fit.RF, wdec.test)
+
+table(wdec.test.Y)
+confusionMatrix(preds, wdec.test.Y, positive="True", mode="everything")
+
+fit.RF.roc = roc(wdec.test.Y,
+                 predict(fit.RF,wdec.test, type="prob")[,1],
+                 levels=rev(levels(wdec.test.Y)))
+fit.RF.roc
+
+plot(fit.RF.roc, 
+     print.thres = c(.5), 
+     type = "S",
+     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+     print.thres.cex = .8,
+     legacy.axes=TRUE)
 
 
+```
+
+Random Forest with optimized threshold
+```{r}
+library(caret)
+library(randomForest)
+## Now customize model to find best threshold
+
+## Get the model code for the original random forest method:
+
+thresh_code <- getModelInfo("rf", regex = FALSE)[[1]]
+thresh_code$type <- c("Classification")
+## Add the threshold as another tuning parameter
+thresh_code$parameters <- data.frame(parameter = c("mtry", "threshold"),
+                                     class = c("numeric", "numeric"),
+                                     label = c("#Randomly Selected Predictors",
+                                               "Probability Cutoff"))
+## The default tuning grid code:
+thresh_code$grid <- function(x, y, len = NULL, search = "grid") {
+  p <- ncol(x)
+  if(search == "grid") {
+    grid <- expand.grid(mtry = floor(sqrt(p)), 
+                        threshold = seq(.01, .99, length = len))
+    } else {
+      grid <- expand.grid(mtry = sample(1:p, size = len),
+                          threshold = runif(1, 0, size = len))
+      }
+  grid
+  }
+
+## Here we fit a single random forest model (with a fixed mtry)
+## and loop over the threshold values to get predictions from the same
+## randomForest model.
+thresh_code$loop = function(grid) {   
+  library(plyr)
+  loop <- ddply(grid, c("mtry"),
+                function(x) c(threshold = max(x$threshold)))
+  submodels <- vector(mode = "list", length = nrow(loop))
+  for(i in seq(along = loop$threshold)) {
+    index <- which(grid$mtry == loop$mtry[i])
+    cuts <- grid[index, "threshold"] 
+    submodels[[i]] <- data.frame(threshold = cuts[cuts != loop$threshold[i]])
+    }    
+  list(loop = loop, submodels = submodels)
+  }
+
+## Fit the model independent of the threshold parameter
+thresh_code$fit = function(x, y, wts, param, lev, last, classProbs, ...) { 
+  if(length(levels(y)) != 2)
+    stop("This works only for 2-class problems")
+  randomForest(x, y, mtry = param$mtry, ...)
+  }
+
+## Now get a probability prediction and use different thresholds to
+## get the predicted class
+thresh_code$predict = function(modelFit, newdata, submodels = NULL) {
+  class1Prob <- predict(modelFit, 
+                        newdata, 
+                        type = "prob")[, modelFit$obsLevels[1]]
+  ## Raise the threshold for class #1 and a higher level of
+  ## evidence is needed to call it class 1 so it should 
+  ## decrease sensitivity and increase specificity
+  out <- ifelse(class1Prob >= modelFit$tuneValue$threshold,
+                modelFit$obsLevels[1], 
+                modelFit$obsLevels[2])
+  if(!is.null(submodels)) {
+    tmp2 <- out
+    out <- vector(mode = "list", length = length(submodels$threshold))
+    out[[1]] <- tmp2
+    for(i in seq(along = submodels$threshold)) {
+      out[[i+1]] <- ifelse(class1Prob >= submodels$threshold[[i]],
+                           modelFit$obsLevels[1], 
+                           modelFit$obsLevels[2])
+      }
+    } 
+  out  
+  }
+
+## The probabilities are always the same but we have to create
+## mulitple versions of the probs to evaluate the data across
+## thresholds
+thresh_code$prob = function(modelFit, newdata, submodels = NULL) {
+  out <- as.data.frame(predict(modelFit, newdata, type = "prob"))
+  if(!is.null(submodels)) {
+    probs <- out
+    out <- vector(mode = "list", length = length(submodels$threshold)+1)
+    out <- lapply(out, function(x) probs)
+    } 
+  out 
+}
+
+####################
+
+fourStats <- function (data, lev = levels(data$obs), model = NULL) {
+  ## This code will get use the area under the ROC curve and the
+  ## sensitivity and specificity values using the current candidate
+  ## value of the probability threshold.
+  out <- c(twoClassSummary(data, lev = levels(data$obs), model = NULL))
+  
+  ## The best possible model has sensitivity of 1 and specificity of 1. 
+  ## How far are we from that value?
+  coords <- matrix(c(1, 1, out["Spec"], out["Sens"]), 
+                   ncol = 2, 
+                   byrow = TRUE)
+  colnames(coords) <- c("Spec", "Sens")
+  rownames(coords) <- c("Best", "Current")
+  c(out, Dist = dist(coords)[1])
+}
+
+```
+Use above to fit a model
+```{r}
+library(randomForest)
+library(reshape2)
+library(pROC)
+set.seed(949)
+fit.RF.thresh <- train(
+              coreferent ~., 
+              data = wdec.train,
+              method = thresh_code,
+              ## Minimize the distance to the perfect model
+              metric = "Dist",
+              maximize = FALSE,
+              preProc = c("center", "scale"),
+              tuneLength = 20,
+              ntree = 100,
+              trControl = trainControl(method = "repeatedcv",
+                                       number=10,
+                                       repeats = 5,
+                                       classProbs = TRUE,
+                                       summaryFunction = fourStats))
+fit.RF.thresh
+getTrainPerf(fit.RF.thresh)
+
+preds = predict(fit.RF.thresh, wdec.test)
+confusionMatrix(preds, wdec.test.Y, positive="True", mode="everything")
+
+fit.RF.thresh.roc = roc(wdec.test.Y,
+                        predict(fit.RF.thresh,wdec.test, type="prob")[,1],
+                        levels=rev(levels(wdec.test.Y)))
+
+
+
+plot(fit.RF.thresh.roc, 
+     print.thres = c(.5), 
+     type = "S",
+     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+     print.thres.cex = .8,
+     legacy.axes=TRUE)
+
+metrics <- fit.RF.thresh$results[, c(2, 4:6)]
+metrics <- melt(metrics, id.vars = "threshold", 
+                variable.name = "Resampled",
+                value.name = "Data")
+
+ggplot(metrics, aes(x = threshold, y = Data, color = Resampled)) + 
+  geom_line() + 
+  ylab("") + xlab("Probability Cutoff") +
+  theme(legend.position = "top")
+```
+
+
+Lasso
+```{r}
+library(caret)
+library(pROC)
+
+# fit a lasso model 
+fit.lasso = train(
+                  coreferent ~., # define the model
+                  data = wdec.train, # data
+                  method = "glmnet", # use glmnet
+                  family="binomial", # logistic regression
+                  trControl = trainControl(method = "repeatedcv", # cross-validation,
+                                           repeats = 5,
+                                           summaryFunction = twoClassSummary,
+                                           classProbs = TRUE
+                                          ),
+                  metric = "ROC", # optimize by ROC
+                  tuneGrid=expand.grid(.alpha=1, .lambda=seq(0, 1, by = 0.1)) # grid for lambda search
+                  )
+# print results
+getTrainPerf(fit.lasso)
+fit.lasso.roc = roc(wdec.test.Y,
+                    predict(fit.lasso,wdec.test, type="prob")[,1],
+                    levels=rev(levels(wdec.test.Y)))
+fit.lasso.roc
+plot(fit.lasso.roc, 
+     print.thres = c(.5), 
+     type = "S",
+     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+     print.thres.cex = .8,
+     legacy.axes=TRUE)
 
 
 
