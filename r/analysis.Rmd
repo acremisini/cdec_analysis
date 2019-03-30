@@ -7,7 +7,8 @@ output: html_document
 
 Specify data locations
 ```{r}
-wdec.path = "../python/data/WDEC.csv"
+wdec.train.path = "../python/data/WDEC_train.csv"
+wdec.test.path = "../python/data/WDEC_test.csv"
 cdec.path = "../python/data/CDEC.csv"
 ```
 
@@ -15,9 +16,11 @@ Load data
 ```{r}
 set.seed(123)
 # read data to csv
-wdec.data = read.csv(file=wdec.path, header=TRUE, sep=",")
+wdec.data = read.csv(file=wdec.train.path, header=TRUE, sep=",")
+wdec.test.data = read.csv(file=wdec.test.path, header=TRUE, sep=",")
 wdec.data = na.omit(wdec.data)
 
+# train
 wdec.data = wdec.data[,c("word2vec.similarity", "sts", "coreferent")]
 
 wdec.data$coreferent = as.factor(wdec.data$coreferent)
@@ -26,14 +29,16 @@ wdec.data$interaction = wdec.data$sts*(wdec.data$word2vec.similarity+.01)
 
 levels(wdec.data$coreferent) = c('False', 'True')
 
+# test 
+wdec.test.data = wdec.test.data[,c("word2vec.similarity", "sts", "coreferent")]
+wdec.test.data$coreferent = as.factor(wdec.test.data$coreferent)
+wdec.test.data$interaction = wdec.test.data$sts*(wdec.test.data$word2vec.similarity+.01)
+levels(wdec.test.data$coreferent) = c('False','True')
+
 # WDEC:
 
-# do random 80/20 split
-n = dim(wdec.data)[1]
-train=sample(n,n*0.80)
-test=-train
-wdec.train=wdec.data[train,]
-wdec.test=wdec.data[test,]
+wdec.train=wdec.data
+wdec.test=wdec.test.data
 
 # make matrices
 wdec.data.mat=model.matrix(wdec.data$coreferent~.,data=data.frame(wdec.data))[,-1]

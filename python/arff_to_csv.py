@@ -6,7 +6,7 @@ import ntpath
 import sys
 
 # Getting all the arff files from the current directory
-files = [glob.wdec_arff, glob.cdec_arff]
+files = [glob.wdec_train, glob.wdec_test]
 
 # Function for converting arff list to csv list
 def toCsv(content):
@@ -34,7 +34,8 @@ for file in files:
     with open(file , "r") as inFile:
         content = inFile.readlines()
         path, ext = os.path.splitext(inFile.name)
-        name = ntpath.basename(path).split('_')[0]
+        # name = ntpath.basename(path).split('_')[0]
+        name = ntpath.basename(path)
         new = toCsv(content)
         with open('data/' + name + ".csv", "w") as outFile:
             outFile.writelines(new)
