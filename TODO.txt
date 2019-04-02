@@ -1,0 +1,7 @@
+- Exploratory data analysis
+- Viz of exploration
+- Testing different models
+	- with and without interaction terms
+	- review on caret which models (basic models before midterm, random forest, svm)
+- writing paper
+- PowerPoint
