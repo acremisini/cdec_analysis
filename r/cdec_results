@@ -1,0 +1,52 @@
+Random Forest 
+
+164611 samples
+    10 predictors
+     2 classes: 'False', 'True' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold, repeated 5 times) 
+Summary of sample sizes: 148150, 148151, 148149, 148150, 148150, 148149, ... 
+Resampling results:
+
+  ROC        Sens       Spec     
+  0.9023856  0.9907695  0.5961393
+
+Tuning parameter 'mtry' was held constant at a value of 4
+> 
+> preds = predict(fit.RF, test)
+> 
+> table(test.Y)
+test.Y
+False  True 
+28254  2674 
+> confusionMatrix(preds, test.Y, positive="True", mode="everything")
+Confusion Matrix and Statistics
+
+          Reference
+Prediction False  True
+     False 28019  1363
+     True    235  1311
+                                          
+               Accuracy : 0.9483          
+                 95% CI : (0.9458, 0.9508)
+    No Information Rate : 0.9135          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.5957          
+                                          
+ Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.49028         
+            Specificity : 0.99168         
+         Pos Pred Value : 0.84799         
+         Neg Pred Value : 0.95361         
+              Precision : 0.84799         
+                 Recall : 0.49028         
+                     F1 : 0.62133         
+             Prevalence : 0.08646         
+         Detection Rate : 0.04239         
+   Detection Prevalence : 0.04999         
+      Balanced Accuracy : 0.74098         
+                                          
+       'Positive' Class : True 
