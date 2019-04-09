@@ -25,7 +25,8 @@ def toCsv(content):
                 header += '\n'
                 newContent.append(header)
         else:
-            newContent.append(line.replace('true', '1').replace('false', '0'))
+            # newContent.append(line.replace('true', '1').replace('false', '0'))
+            newContent.append(line)
 
     return newContent
 
@@ -37,23 +38,26 @@ for file in files:
         # name = ntpath.basename(path).split('_')[0]
         name = ntpath.basename(path)
         new = toCsv(content)
+        print(len(new[1].split(',')))
         with open('data/' + name + ".csv", "w") as outFile:
             outFile.writelines(new)
 
-files = [f for f in os.listdir('data')]
-for file in files:
-    data = pd.read_csv('data/' + file)
-    # remove columns with only zero
-    data = data.loc[:, (data != 0).any(axis=0)]
 
-    # check number of non-zero rows
-    print(data.astype(bool).sum(axis=0))
-
-    # write file
-    with open('data/'+file, 'wb') as dst:
-        data.to_csv('data/'+file, sep=',', encoding='utf-8', index=False)
-        dst.seek(-1, os.SEEK_END)  # remove last empty line
-        dst.truncate()
+# files = [f for f in os.listdir('data') if 'nonSrl_as' in f]
+# for file in files:
+#     data = pd.read_csv('data/' + file)
+#
+#     # remove columns with only zero
+#     data = data.loc[:, (data != 0).any(axis=0)]
+#
+#     # check number of non-zero rows
+#     print(data.astype(bool).sum(axis=0))
+#
+#     # write file
+#     with open('data/'+file, 'wb') as dst:
+#         data.to_csv('data/'+file, sep=',', encoding='utf-8', index=False)
+#         dst.seek(-1, os.SEEK_END)  # remove last empty line
+#         dst.truncate()
 
 
 

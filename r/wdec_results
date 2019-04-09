@@ -1,210 +1,161 @@
-# mtry:
-  mtry  ROC        Sens       Spec     
-  1     0.8376329  0.9892977  0.4107972
-  2     0.8710177  0.9865087  0.4594388
-  3     0.8740944  0.9838619  0.4678067
-  4     0.8752751  0.9829209  0.4757816
-  5     0.8760640  0.9824809  0.4823195
-  6     0.8765538  0.9820951  0.4881382
-  7     0.8778659  0.9819529  0.4910160
-  8     0.8775808  0.9816347  0.4961153
-  
-  The final value used for the model was mtry = 7.
+# Piek: 
 
-# Random Forest, 5 10-fold cv runs, with 100 trees, downsampling
+    Confusion Matrix and Statistics
+    
+              Reference
+    Prediction true false
+         true   269    45
+         false  647  5993
+                                              
+                   Accuracy : 0.9005          
+                     95% CI : (0.8932, 0.9074)
+        No Information Rate : 0.8683          
+        P-Value [Acc > NIR] : < 2.2e-16       
+                                              
+                      Kappa : 0.3968          
+                                              
+     Mcnemar's Test P-Value : < 2.2e-16       
+                                              
+                Sensitivity : 0.29367         
+                Specificity : 0.99255         
+             Pos Pred Value : 0.85669         
+             Neg Pred Value : 0.90256         
+                  Precision : 0.85669         
+                     Recall : 0.29367         
+                         F1 : 0.43740   **         
+                 Prevalence : 0.13172         
+             Detection Rate : 0.03868         
+       Detection Prevalence : 0.04515         
+          Balanced Accuracy : 0.64311         
+                                              
+           'Positive' Class : true   
 
-Show in New WindowClear OutputExpand/Collapse Output
- Show Traceback
-Error in which(names(data) == as.character(form[[2]])) : object 'wdec.train' not found
-Show in New WindowClear OutputExpand/Collapse Output
-Random Forest 
+# Piek with word2vec, sts:
 
-32604 samples
-    8 predictors
-    2 classes: 'False', 'True' 
+    Confusion Matrix and Statistics
+    
+              Reference
+    Prediction true false
+         true   407   148
+         false  509  5890
+                                              
+                   Accuracy : 0.9055          
+                     95% CI : (0.8984, 0.9123)
+        No Information Rate : 0.8683          
+        P-Value [Acc > NIR] : < 2.2e-16       
+                                              
+                      Kappa : 0.5041          
+                                              
+     Mcnemar's Test P-Value : < 2.2e-16       
+                                              
+                Sensitivity : 0.44432         
+                Specificity : 0.97549         
+             Pos Pred Value : 0.73333         
+             Neg Pred Value : 0.92046         
+                  Precision : 0.73333         
+                     Recall : 0.44432         
+                         F1 : 0.55337   **         
+                 Prevalence : 0.13172         
+             Detection Rate : 0.05853         
+       Detection Prevalence : 0.07981         
+          Balanced Accuracy : 0.70991         
+                                              
+           'Positive' Class : true       
+           
+# Parsed:
 
-No pre-processing
-Resampling: Cross-Validated (10 fold, repeated 5 times) 
-Summary of sample sizes: 29344, 29344, 29343, 29343, 29343, 29343, ... 
-Resampling results:
+    Confusion Matrix and Statistics
+    
+              Reference
+    Prediction true false
+         true   437   156
+         false  479  5882
+                                              
+                   Accuracy : 0.9087          
+                     95% CI : (0.9017, 0.9154)
+        No Information Rate : 0.8683          
+        P-Value [Acc > NIR] : < 2.2e-16       
+                                              
+                      Kappa : 0.5306          
+                                              
+     Mcnemar's Test P-Value : < 2.2e-16       
+                                              
+                Sensitivity : 0.47707         
+                Specificity : 0.97416         
+             Pos Pred Value : 0.73693         
+             Neg Pred Value : 0.92470         
+                  Precision : 0.73693         
+                     Recall : 0.47707         
+                         F1 : 0.57919   **         
+                 Prevalence : 0.13172         
+             Detection Rate : 0.06284         
+       Detection Prevalence : 0.08527         
+          Balanced Accuracy : 0.72562         
+                                              
+           'Positive' Class : true            
 
-  ROC        Sens       Spec     
-  0.8739629  0.9839567  0.4699646
+# Parsed, nonSrl:
 
-Tuning parameter 'mtry' was held constant at a value of 3
-test.Y
-False  True 
- 6038   916 
-Confusion Matrix and Statistics
+    Confusion Matrix and Statistics
+    
+              Reference
+    Prediction true false
+         true   227    97
+         false  208   771
+                                             
+                   Accuracy : 0.7659         
+                     95% CI : (0.742, 0.7887)
+        No Information Rate : 0.6662         
+        P-Value [Acc > NIR] : 2.283e-15      
+                                             
+                      Kappa : 0.438          
+                                             
+     Mcnemar's Test P-Value : 3.004e-10      
+                                             
+                Sensitivity : 0.5218         
+                Specificity : 0.8882         
+             Pos Pred Value : 0.7006         
+             Neg Pred Value : 0.7875         
+                  Precision : 0.7006         
+                     Recall : 0.5218         
+                         F1 : 0.5982    **         
+                 Prevalence : 0.3338         
+             Detection Rate : 0.1742         
+       Detection Prevalence : 0.2487         
+          Balanced Accuracy : 0.7050         
+                                             
+           'Positive' Class : true
+           
+# Parsed, srl:
 
-          Reference
-Prediction False True
-     False  5962  558
-     True     76  358
-                                          
-               Accuracy : 0.9088          
-                 95% CI : (0.9018, 0.9155)
-    No Information Rate : 0.8683          
-    P-Value [Acc > NIR] : < 2.2e-16       
-                                          
-                  Kappa : 0.4869          
-                                          
- Mcnemar's Test P-Value : < 2.2e-16       
-                                          
-            Sensitivity : 0.39083         
-            Specificity : 0.98741         
-         Pos Pred Value : 0.82488         
-         Neg Pred Value : 0.91442         
-              Precision : 0.82488         
-                 Recall : 0.39083         
-                     F1 : 0.53037         
-             Prevalence : 0.13172         
-         Detection Rate : 0.05148         
-   Detection Prevalence : 0.06241         
-      Balanced Accuracy : 0.68912         
-                                          
-       'Positive' Class : True            
-                                          
-
-Call:
-roc.default(response = test.Y, predictor = predict(fit.RF, test,     type = "prob")[, 1], levels = rev(levels(test.Y)))
-
-Data: predict(fit.RF, test, type = "prob")[, 1] in 916 controls (test.Y True) < 6038 cases (test.Y False).
-Area under the curve: 0.8183
-R Console
-
-Random Forest 
-
-32604 samples
-    8 predictors
-    2 classes: 'False', 'True' 
-
-No pre-processing
-Resampling: Cross-Validated (10 fold, repeated 5 times) 
-Summary of sample sizes: 29344, 29344, 29343, 29343, 29343, 29343, ... 
-Resampling results:
-
-  ROC        Sens       Spec     
-  0.8739629  0.9839567  0.4699646
-
-Tuning parameter 'mtry' was held constant at a value of 3
-test.Y
-False  True 
- 6038   916 
-Confusion Matrix and Statistics
-
-          Reference
-Prediction False True
-     False  5962  558
-     True     76  358
-                                          
-               Accuracy : 0.9088          
-                 95% CI : (0.9018, 0.9155)
-    No Information Rate : 0.8683          
-    P-Value [Acc > NIR] : < 2.2e-16       
-                                          
-                  Kappa : 0.4869          
-                                          
- Mcnemar's Test P-Value : < 2.2e-16       
-                                          
-            Sensitivity : 0.39083         
-            Specificity : 0.98741         
-         Pos Pred Value : 0.82488         
-         Neg Pred Value : 0.91442         
-              Precision : 0.82488         
-                 Recall : 0.39083         
-                     F1 : 0.53037         
-             Prevalence : 0.13172         
-         Detection Rate : 0.05148         
-   Detection Prevalence : 0.06241         
-      Balanced Accuracy : 0.68912         
-                                          
-       'Positive' Class : True            
-                                          
-
-Call:
-roc.default(response = test.Y, predictor = predict(fit.RF, test,     type = "prob")[, 1], levels = rev(levels(test.Y)))
-
-Data: predict(fit.RF, test, type = "prob")[, 1] in 916 controls (test.Y True) < 6038 cases (test.Y False).
-Area under the curve: 0.8183
-- Random Forest, 5 10-fold cv runs, with 100 trees
-
-## No STS:
-
-Confusion Matrix and Statistics
-
-          Reference
-Prediction False True
-     False  7033  417
-     True     80  382
-                                          
-               Accuracy : 0.9372          
-                 95% CI : (0.9316, 0.9424)
-    No Information Rate : 0.899           
-    P-Value [Acc > NIR] : < 2.2e-16       
-                                          
-                  Kappa : 0.5744          
-                                          
- Mcnemar's Test P-Value : < 2.2e-16       
-                                          
-            Sensitivity : 0.47810         
-            Specificity : 0.98875         
-         Pos Pred Value : 0.82684         
-         Neg Pred Value : 0.94403         
-              Precision : 0.82684         
-                 Recall : 0.47810         
-                     F1 : 0.60587         
-             Prevalence : 0.10099         
-         Detection Rate : 0.04828         
-   Detection Prevalence : 0.05839         
-      Balanced Accuracy : 0.73343         
-                                          
-       'Positive' Class : True            
-                                          
-
-Call:
-roc.default(response = wdec.test.Y, predictor = predict(fit.RF,     wdec.test, type = "prob")[, 1], levels = rev(levels(wdec.test.Y)))
-
-Data: predict(fit.RF, wdec.test, type = "prob")[, 1] in 799 controls (wdec.test.Y True) < 7113 cases (wdec.test.Y False).
-Area under the curve: 0.8662
-
-
-## Sts:
-
-Confusion Matrix and Statistics
-
-          Reference
-Prediction False True
-     False  7008  400
-     True    105  399
-                                          
-               Accuracy : 0.9362          
-                 95% CI : (0.9306, 0.9415)
-    No Information Rate : 0.899           
-    P-Value [Acc > NIR] : < 2.2e-16       
-                                          
-                  Kappa : 0.5796          
-                                          
- Mcnemar's Test P-Value : < 2.2e-16       
-                                          
-            Sensitivity : 0.49937         
-            Specificity : 0.98524         
-         Pos Pred Value : 0.79167         
-         Neg Pred Value : 0.94600         
-              Precision : 0.79167         
-                 Recall : 0.49937         
-                     F1 : 0.61243         
-             Prevalence : 0.10099         
-         Detection Rate : 0.05043         
-   Detection Prevalence : 0.06370         
-      Balanced Accuracy : 0.74231         
-                                          
-       'Positive' Class : True            
-                                          
-
-Call:
-roc.default(response = wdec.test.Y, predictor = predict(fit.RF,     wdec.test, type = "prob")[, 1], levels = rev(levels(wdec.test.Y)))
-
-Data: predict(fit.RF, wdec.test, type = "prob")[, 1] in 799 controls (wdec.test.Y True) < 7113 cases (wdec.test.Y False).
-Area under the curve: 0.8655
-
+    Confusion Matrix and Statistics
+    
+              Reference
+    Prediction true false
+         true   164    47
+         false   93  2007
+                                              
+                   Accuracy : 0.9394          
+                     95% CI : (0.9289, 0.9488)
+        No Information Rate : 0.8888          
+        P-Value [Acc > NIR] : < 2.2e-16       
+                                              
+                      Kappa : 0.6675          
+                                              
+     Mcnemar's Test P-Value : 0.0001428       
+                                              
+                Sensitivity : 0.63813         
+                Specificity : 0.97712         
+             Pos Pred Value : 0.77725         
+             Neg Pred Value : 0.95571         
+                  Precision : 0.77725         
+                     Recall : 0.63813         
+                         F1 : 0.70085   **       
+                 Prevalence : 0.11121         
+             Detection Rate : 0.07096         
+       Detection Prevalence : 0.09130         
+          Balanced Accuracy : 0.80763         
+                                              
+           'Positive' Class : true   
+                                      
+                                  

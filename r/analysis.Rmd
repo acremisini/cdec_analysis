@@ -7,40 +7,43 @@ output: html_document
 
 Specify data locations
 ```{r}
-train.path = "../python/data/WDEC_train.csv"
-test.path = "../python/data/WDEC_test.csv"
+train.path = "../python/data/WDEC_srl_as_train.csv"
+test.path = "../python/data/WDEC_srl_as_test.csv"
 ```
 
 Load and prepare data
 ```{r}
 library(caret)
 library(DMwR)
+library(forcats)
 set.seed(123)
 
 # read data to csv
 train = read.csv(file=train.path, header=TRUE, sep=",")
 test = read.csv(file=test.path, header=TRUE, sep=",")
 
+
 # clean
 train = na.omit(train)
 test = na.omit(test)
-
-# add interaction term
-train$interaction1 = (train$word2vec.similarity)*(train$lemma.overlap+.5)*train$sts
-test$interaction1 = (test$word2vec.similarity)*(test$lemma.overlap+.5)*test$sts
 
 # make dependent variable a factor
 train$Class = as.factor(train$coreferent)
 test$Class = as.factor(test$coreferent)
 
+#train$same_sentence = as.factor(train$same_sentence)
+#test$same_sentence = as.factor(test$same_sentence)
+
 # change levels from 0,1 to False,True
-levels(train$Class) = c('False', 'True')
-levels(test$Class) = c('False', 'True')
+#levels(train$Class) = c("false", "true")
+#levels(test$Class) = c("false", "true")
+
+train$Class = fct_relevel(train$Class, "true")
+test$Class = fct_relevel(test$Class, "true")
 
 # remove old response variable
-train = subset(train, select=-c(coreferent))
-test = subset(test, select=-c(coreferent))
-
+train = subset(train, select=-c(coreferent,same_sentence))
+test = subset(test, select=-c(coreferent,same_sentence))
 # store response for convenience
 train.Y=train$Class
 test.Y=test$Class
@@ -48,7 +51,7 @@ test.Y=test$Class
 # under and over sample
 train.down_sample = downSample(x = train[, -ncol(train)],
                         y = train$Class)
-train.smote <- SMOTE(Class ~ ., data  = train)   
+#train.smote <- SMOTE(Class ~ ., data  = train)   
 
 
 ```
@@ -63,48 +66,109 @@ Vanilla Random Forest
 library(caret)
 library(pROC)
 library(DMwR)
+#library(mlr)
 set.seed(123)
 
+
 fit.RF = train(
-               Class ~., # define the model
+               Class ~ ., # define the model
                data = train, # data
-               method = "adaboost", # rf
-               metric = "ROC",
-               search = "grid",
-               iter = 10,#tuneGrid = data.frame(mtry=4), #expand.grid(.mtry=c(1:8)),
-               maxdepth = 5,
-               nu = 5,
-               # ntree = 100,
+               method = "rf",
+               metric= "AUC",
+               tuneGrid = data.frame(mtry=4),#data.frame(mtry=10), #expand.grid(.mtry=c(4:16)),
+               ntree = 100,
                trControl = trainControl(method = "repeatedcv", # cross-validation,
-                                        number= 1,
-                                        repeats = 1,
-                                        summaryFunction = twoClassSummary,
+                                        number= 10,
+                                        repeats = 5,
+                                        summaryFunction = prSummary,
                                         classProbs = TRUE
                                        )
               )
 
+cat("\n---------- Training ------------\n\n")
 fit.RF
-
+#0.21631579
 preds = predict(fit.RF, test)
 
-table(test.Y)
-confusionMatrix(preds, test.Y, positive="True", mode="everything")
+# for within sentence nonSrl
+#preds = setThreshold(preds, threshold = 0.21631579)
+pred_probs = predict(fit.RF, test,type="prob")
 
-fit.RF.roc = roc(test.Y,
-                 predict(fit.RF,test, type="prob")[,1],
-                 levels=rev(levels(test.Y)))
-fit.RF.roc
+cat("\n---------- Testing ------------\n\n")
+confusionMatrix(preds, test.Y, positive="true", mode="everything")
 
-plot(fit.RF.roc, 
-     print.thres = c(.5), 
-     type = "S",
-     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
-     print.thres.cex = .8,
-     legacy.axes=TRUE)
+dat = data.frame(obs=test.Y,
+                 pred=preds,
+                 true=pred_probs$true,
+                 false=pred_probs$false)
+
+prSummary(dat, lev=levels(test.Y))
+twoClassSummary(dat, lev = levels(test.Y))
 
 
 ```
+Gradient boosting
+```{r}
+library(xgboost)
+library(caret)
+library(plyr)
+library(dplyr)
 
+train.matrix = xgb.DMatrix(data = model.matrix(Class ~.,data=train))
+test.matrix = xgb.DMatrix(data = model.matrix(Class ~.,data=test))
+
+xgb_trcontrol = trainControl(
+                              method = "repeatedcv",
+                              number = 10,
+                              repeats=5,
+                              allowParallel = TRUE,
+                              verboseIter = FALSE,
+                              returnData = FALSE
+                            )
+
+xgbGrid <- expand.grid(nrounds = 300,  # c(100,200),# this is n_estimators in the python code above
+                       max_depth = 20,#c(10, 15, 20, 25),
+                       colsample_bytree = .5,#seq(0.5, 0.9, length.out = 5),
+                       ## The values below are default values in the sklearn-api. 
+                       eta = 0.1,#c(0,0.1,0.5,0.9), # 0.1
+                       gamma= 0,#c(0,0.1,0.5,0.9), # 0
+                       min_child_weight = 1,
+                       subsample = 1
+                      )
+fit.xgb = train(
+                  train.matrix, 
+                  train.Y,  
+                  trControl = trainControl(method = "repeatedcv", # cross-validation,
+                                            number= 10,
+                                            repeats = 5,
+                                            summaryFunction = prSummary,
+                                            classProbs = TRUE
+                                           ),
+                  tuneGrid = xgbGrid,
+                  method = "xgbTree",
+                  metric="AUC"
+                )
+
+cat("\n---------- Training ------------\n\n")
+fit.xgb
+
+preds = predict(fit.xgb, test.matrix)
+pred_probs = predict(fit.xgb, test.matrix ,type="prob")
+
+cat("\n---------- Testing ------------\n\n")
+confusionMatrix(preds, test.Y, positive="true", mode="everything")
+
+dat = data.frame(obs=test.Y,
+                 pred=preds,
+                 true=pred_probs$true,
+                 false=pred_probs$false)
+
+prSummary(dat, lev=levels(test.Y))
+twoClassSummary(dat, lev = levels(test.Y))
+
+
+
+```
 
 SVM
 ```{r}
@@ -169,7 +233,7 @@ thresh_code$parameters <- data.frame(parameter = c("mtry", "threshold"),
 thresh_code$grid <- function(x, y, len = NULL, search = "grid") {
   p <- ncol(x)
   if(search == "grid") {
-    grid <- expand.grid(mtry = floor(sqrt(p)), 
+    grid <- expand.grid(mtry = floor(sqrt(p)), #seq(1,p),#mtry = floor(sqrt(p)), # 12 for all was optimal
                         threshold = seq(.01, .99, length = len))
     } else {
       grid <- expand.grid(mtry = sample(1:p, size = len),
@@ -245,14 +309,14 @@ fourStats <- function (data, lev = levels(data$obs), model = NULL) {
   ## This code will get use the area under the ROC curve and the
   ## sensitivity and specificity values using the current candidate
   ## value of the probability threshold.
-  out <- c(twoClassSummary(data, lev = levels(data$obs), model = NULL))
+  out <- c(prSummary(data, lev = levels(data$obs), model = NULL))
   
   ## The best possible model has sensitivity of 1 and specificity of 1. 
   ## How far are we from that value?
-  coords <- matrix(c(1, 1, out["Spec"], out["Sens"]), 
+  coords <- matrix(c(1, 1, out["Recall"], out["Precision"]), 
                    ncol = 2, 
                    byrow = TRUE)
-  colnames(coords) <- c("Spec", "Sens")
+  colnames(coords) <- c("Recall", "Precision")
   rownames(coords) <- c("Best", "Current")
   c(out, Dist = dist(coords)[1])
 }
@@ -263,15 +327,17 @@ Use above to fit a model
 library(randomForest)
 library(reshape2)
 library(pROC)
+library(plyr)
+library(dplyr)
 set.seed(123)
 
 fit.RF.thresh <- train(
               Class ~., 
               data = train,
               method = thresh_code,
-              ## Minimize the distance to the perfect model
-              metric = "Dist",
-              maximize = FALSE,
+              ## Maximize the distance to the perfect model
+              metric = "F",
+              maximize = TRUE,
               preProc = c("center", "scale"),
               tuneLength = 20,
               ntree = 100,
@@ -283,8 +349,10 @@ fit.RF.thresh <- train(
 fit.RF.thresh
 getTrainPerf(fit.RF.thresh)
 
+table(test.Y)
 preds = predict(fit.RF.thresh, test)
-confusionMatrix(preds, test.Y, positive="True", mode="everything")
+
+confusionMatrix(preds, test.Y, positive="true", mode="everything")
 
 fit.RF.thresh.roc = roc(test.Y,
                         predict(fit.RF.thresh,test, type="prob")[,1],
@@ -295,7 +363,7 @@ fit.RF.thresh.roc = roc(test.Y,
 plot(fit.RF.thresh.roc, 
      print.thres = c(.5), 
      type = "S",
-     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+     print.thres.pattern = "%.3f (Recall = %.2f, Precision = %.2f)",
      print.thres.cex = .8,
      legacy.axes=TRUE)
 
@@ -332,7 +400,9 @@ fit.lasso = train(
                   tuneGrid=expand.grid(.alpha=1, .lambda=seq(0, 1, by = 0.1)) # grid for lambda search
                   )
 # print results
+
 getTrainPerf(fit.lasso)
+coef(fit.lasso$finalModel,fit.lasso$bestTune$.lambda)
 fit.lasso.roc = roc(test.Y,
                     predict(fit.lasso,test, type="prob")[,1],
                     levels=rev(levels(test.Y)))
